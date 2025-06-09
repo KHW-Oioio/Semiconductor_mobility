@@ -16,7 +16,7 @@ st.set_page_config(
 st.sidebar.header("🔧 공정 파라미터 설정")
 
 # 1.1 데이터 업로드
-uploaded_file = st.sidebar.file_uploader("📥 CSV 파일 업로드 (RF_power, etch_rate 컬럼 포함)", type=["csv"])
+uploaded_file = st.sidebar.file_uploader("📥 CSV 파일 업로드 ", type=["csv"])
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 else:
