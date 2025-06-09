@@ -1,5 +1,3 @@
-# streamlit_etching_app.py
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -18,90 +16,81 @@ st.set_page_config(
 st.sidebar.header("🔧 공정 파라미터 설정")
 
 # 1.1 데이터 업로드
-uploaded_file = st.sidebar.file_uploader("📥 CSV 파일 업로드 (RF_power, Temperature, Pressure, etch_rate 포함)", type=["csv"])
-
+uploaded_file = st.sidebar.file_uploader("📥 CSV 파일 업로드 (RF_power,etch_rate 컬럼 포함)", type=["csv"])
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 else:
     st.sidebar.info("샘플 데이터를 사용합니다.")
+    # 샘플 데이터 생성 (RF_power: 50~500 W, etch_rate: 10~200 Å/min)
     np.random.seed(42)
     powers = np.linspace(50, 500, 20)
-    temps = np.random.uniform(20, 80, size=20)       # 온도: 20~80도
-    pressures = np.random.uniform(50, 200, size=20)  # 압력: 50~200 mTorr
-
-    rates = (
-        0.0008 * powers**2 
-        - 0.3 * powers 
-        + 0.2 * temps 
-        - 0.1 * pressures 
-        + 20 
-        + np.random.normal(0, 5, len(powers))
-    )
+    rates = 0.0008 * powers**2 - 0.3 * powers + 20 + np.random.normal(0, 5, len(powers))
     df = pd.DataFrame({
         "RF_power": powers,
-        "Temperature": temps,
-        "Pressure": pressures,
         "etch_rate": rates
     })
 
-# 1.2 회귀 차수 선택
-poly_degree = st.sidebar.selectbox("🔢 다항 회귀 차수 선택", options=[1, 2, 3], index=1)
+# 1.2 회귀모델 차수 선택
+poly_degree = st.sidebar.selectbox(
+    "🔢 다항 회귀 차수 선택", 
+    options=[1, 2, 3], 
+    index=1,
+    help="RF 전력 vs. 식각 속도의 비선형성을 모델링할 차수를 선택하세요."
+)
 
-# 1.3 사용자 입력 슬라이더
-user_power = st.sidebar.slider("⚡ 시뮬레이션 RF 전력 (W)", float(df.RF_power.min()), float(df.RF_power.max()), float(df.RF_power.mean()), step=1.0)
-user_temp = st.sidebar.slider("🌡️ 온도 (°C)", float(df.Temperature.min()), float(df.Temperature.max()), float(df.Temperature.mean()), step=1.0)
-user_pressure = st.sidebar.slider("🧪 압력 (mTorr)", float(df.Pressure.min()), float(df.Pressure.max()), float(df.Pressure.mean()), step=1.0)
+# 1.3 시뮬레이션용 RF 전력 슬라이더
+user_power = st.sidebar.slider(
+    "⚡ 시뮬레이션 RF 전력 (W)", 
+    min_value=float(df.RF_power.min()), 
+    max_value=float(df.RF_power.max()), 
+    value=float(df.RF_power.mean()), 
+    step=1.0
+)
 
-# 1.4 총 식각 시간
-etch_time = st.sidebar.number_input("⏱ 총 시뮬레이션 시간 (초)", min_value=10, max_value=600, value=60, step=10)
+# 1.4 총 식각 시간 입력
+etch_time = st.sidebar.number_input(
+    "⏱ 총 시뮬레이션 시간 (초)", 
+    min_value=10, max_value=600, value=60, step=10
+)
 
 # --- 2. 데이터 & 모델 준비 ---
 st.header("1️⃣ 데이터 확인 및 회귀 모델 학습")
 
 with st.expander("▶️ Raw Data 보기"):
-    st.dataframe(df.style.format({
-        "RF_power": "{:.1f}",
-        "Temperature": "{:.1f}",
-        "Pressure": "{:.1f}",
-        "etch_rate": "{:.2f}"
-    }))
+    st.dataframe(df.style.format({"RF_power":"{:.1f}", "etch_rate":"{:.2f}"}))
 
 # 2.1 회귀 모델 학습
-features = ["RF_power", "Temperature", "Pressure"]
-X = df[features].values
+X = df[["RF_power"]].values
 y = df["etch_rate"].values
 
 if poly_degree > 1:
     poly = PolynomialFeatures(degree=poly_degree, include_bias=False)
     X_poly = poly.fit_transform(X)
     model = LinearRegression().fit(X_poly, y)
-
-    def predict(rf, temp, pressure):
-        xp = poly.transform([[rf, temp, pressure]])
+    def predict(rate_power):
+        xp = poly.transform([[rate_power]])
         return model.predict(xp)[0]
 else:
     model = LinearRegression().fit(X, y)
+    def predict(rate_power):
+        return model.predict([[rate_power]])[0]
 
-    def predict(rf, temp, pressure):
-        return model.predict([[rf, temp, pressure]])[0]
-
-# --- 모델 정보 출력 ---
+# 모델 기울기/파라미터 출력
 coef = model.coef_
 intercept = model.intercept_
-st.markdown(f"- **모델 차수:** {poly_degree}차")
-st.markdown(f"- **예측 결과:** {user_power:.1f} W / {user_temp:.1f}°C / {user_pressure:.1f} mTorr → **{predict(user_power, user_temp, user_pressure):.2f} Å/분**")
+st.markdown(f"- **모델 형태:** {' + '.join(f'{coef[i]:.4e}·RF^{i+1}' for i in range(len(coef)))} + {intercept:.2f}")
+st.markdown(f"- **선택된 RF 전력:** {user_power:.1f} W → 예측 식각 속도: **{predict(user_power):.2f} Å/분**")
 
-# --- 3. 시각화 (RF Power vs Etch Rate만 표시) ---
-st.subheader("RF 전력 vs. 식각 속도 (기타 변수 고정)")
-
-powers_line = np.linspace(df.RF_power.min(), df.RF_power.max(), 200)
-pred_line = [predict(p, user_temp, user_pressure) for p in powers_line]
-
+# 2.2 산점도 + 회귀 곡선 시각화
+st.subheader("RF 전력 vs. 식각 속도")
 base = alt.Chart(df).mark_circle(size=60, opacity=0.7).encode(
     x=alt.X("RF_power", title="RF Power (W)"),
     y=alt.Y("etch_rate", title="Etch Rate (Å/min)")
 )
 
+# 회귀선 생성
+powers_line = np.linspace(df.RF_power.min(), df.RF_power.max(), 200)
+pred_line = [predict(p) for p in powers_line]
 line = alt.Chart(pd.DataFrame({
     "RF_power": powers_line,
     "pred_rate": pred_line
@@ -111,66 +100,82 @@ line = alt.Chart(pd.DataFrame({
 
 st.altair_chart(base + line, use_container_width=True)
 
-# --- 4. 실시간 식각 시뮬레이션 ---
-st.header("2️⃣ 실시간 식각 시뮬레이션")
+# --- 3. 실시간 식각 프로세스 시뮬레이션 ---
+st.header("2️⃣ 실시간 식각 프로세스 시뮬레이션")
 
-etch_rate = predict(user_power, user_temp, user_pressure)
-rate_per_sec = etch_rate / 60  # Å/sec
-times = np.linspace(0, etch_time, etch_time + 1)
-depths = rate_per_sec * times
-
-st.write(f"> 총 **{etch_time}초** 동안, RF: **{user_power:.1f} W**, 온도: **{user_temp:.1f}°C**, 압력: **{user_pressure:.1f} mTorr** 조건에서 식각 속도 {etch_rate:.2f} Å/분으로 시뮬레이션합니다.")
+st.write(f"> 총 **{etch_time}초** 동안, **{user_power:.1f} W**에서 예상 식각 속도({predict(user_power):.2f} Å/분)로 시뮬레이션합니다.")
 
 progress_bar = st.progress(0)
 etch_depth_text = st.empty()
 chart_placeholder = st.empty()
 
+# 시뮬레이션 준비
+rate_per_sec = predict(user_power) / 60.0  # Å/sec
+times = np.arange(0, etch_time + 1)
+depths = rate_per_sec * times
+
+# 라인 차트를 그리기 위한 DataFrame
 sim_df = pd.DataFrame({
     "time": times,
     "depth": depths
 })
 
-for i, t in enumerate(times.astype(int)):
+# 실시간 루프
+for i, t in enumerate(times):
     percent = int((i / etch_time) * 100)
     progress_bar.progress(percent)
     etch_depth_text.markdown(f"**시간:** {t}s → **식각 깊이:** {depths[i]:.1f} Å")
-
+    
+    # 차트 업데이트
     c = alt.Chart(sim_df.iloc[:i+1]).mark_line().encode(
-        x="time",
-        y="depth"
+        x=alt.X("time", title="Time (s)"),
+        y=alt.Y("depth", title="Etch Depth (Å)")
     )
     chart_placeholder.altair_chart(c, use_container_width=True)
+    
     time.sleep(0.05)
 
 st.success("✅ 시뮬레이션 완료!")
 
-# --- 5. 모델 파라미터 & 다운로드 ---
-st.header("3️⃣ 추가 기능")
+# --- 4. 시뮬레이션 결과 요약 ---
+st.header("3️⃣ 시뮬레이션 결과 요약")
+
+total_depth = depths[-1]
+avg_rate = predict(user_power)  # 예측된 평균 식각 속도 Å/분
+
+st.markdown(f"- **총 식각 시간:** {etch_time}초")
+st.markdown(f"- **예상 최종 식각 깊이:** {total_depth:.1f} Å")
+st.markdown(f"- **평균 식각 속도:** {avg_rate:.2f} Å/분")
+
+# 시뮬레이션 데이터 전체를 표로 출력
+st.dataframe(sim_df.style.format({"time": "{:.0f}", "depth": "{:.1f}"}))
+
+# --- 5. 추가 기능 & 다운로드 ---
+st.header("4️⃣ 추가 기능")
 
 col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("#### 🔍 모델 파라미터")
-
-    # intercept를 NaN으로 채워서 숫자 포맷 가능하게 함
-    intercept_list = [intercept] + [np.nan] * (len(coef) - 1)
     params = pd.DataFrame({
         "계수(coef)": coef,
-        "절편(intercept)": intercept_list
-    }, index=[f"x{i+1}" for i in range(len(coef))])
-
-    st.table(params.style.format("{:.4e}", subset=["계수(coef)", "절편(intercept)"]))
+        "절편(intercept)": [intercept] + [""]*(len(coef)-1)
+    }, index=[f"RF^{i+1}" for i in range(len(coef))])
+    st.table(params.style.format("{:.4e}"))
 
 with col2:
     st.markdown("#### 📥 예측 결과 다운로드")
     out_df = pd.DataFrame({
         "RF_power": powers_line,
-        "Temperature": [user_temp]*len(powers_line),
-        "Pressure": [user_pressure]*len(powers_line),
         "predicted_etch_rate": pred_line
     })
     csv = out_df.to_csv(index=False).encode('utf-8')
-    st.download_button("CSV로 다운로드", data=csv, file_name="predicted_etch_rates.csv", mime="text/csv")
+    st.download_button(
+        label="CSV로 다운로드",
+        data=csv,
+        file_name="predicted_etch_rates.csv",
+        mime="text/csv"
+    )
 
 st.markdown("---")
 st.caption("© 2025 Semiconductor Etch Simulator")
