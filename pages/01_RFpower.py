@@ -67,7 +67,7 @@ with col3:
 # --- 2. 데이터 & 모델 준비 ---
 st.header("1️⃣ 데이터 확인 및 회귀 모델 학습")
 
-with st.expander("▶️ Sample Data 보기"):
+with st.expander("▶️ Raw Data 보기"):
     st.dataframe(df.style.format({"RF_power":"{:.1f}", "etch_rate":"{:.2f}"}))
 
 X = df[["RF_power"]].values
@@ -111,7 +111,7 @@ st.altair_chart(base + line, use_container_width=True)
 st.header("2️⃣ 실시간 식각 프로세스 시뮬레이션")
 
 st.write(f"> 총 **{etch_time}초**, 온도: **{temperature:.1f}℃**, 압력: **{pressure:.1f} Torr** 에서,")
-st.write(f\"> RF 전력 **{user_power:.1f} W** 에서 예상 식각 속도({predict(user_power):.2f} Å/분)로 시뮬레이션합니다.")
+st.write(f"> RF 전력 **{user_power:.1f} W** 에서 예상 식각 속도({predict(user_power):.2f} Å/분)로 시뮬레이션합니다.")
 
 progress_bar = st.progress(0)
 etch_depth_text = st.empty()
