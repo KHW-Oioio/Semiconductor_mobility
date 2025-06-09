@@ -46,7 +46,7 @@ user_power = st.sidebar.slider(
     step=1.0
 )
 
-# 1.4 시간, 온도, 압력 수평 배치 (최신 Streamlit 필요)
+# 1.4 시간, 온도, 압력 슬라이더로 변경
 col1, col2, col3 = st.sidebar.columns(3)
 with col1:
     etch_time = st.slider(
@@ -67,7 +67,7 @@ with col3:
 # --- 2. 데이터 & 모델 준비 ---
 st.header("1️⃣ 데이터 확인 및 회귀 모델 학습")
 
-with st.expander("▶️ Raw Data 보기"):
+with st.expander("▶️ Sample Data 보기"):
     st.dataframe(df.style.format({"RF_power":"{:.1f}", "etch_rate":"{:.2f}"}))
 
 X = df[["RF_power"]].values
@@ -111,7 +111,7 @@ st.altair_chart(base + line, use_container_width=True)
 st.header("2️⃣ 실시간 식각 프로세스 시뮬레이션")
 
 st.write(f"> 총 **{etch_time}초**, 온도: **{temperature:.1f}℃**, 압력: **{pressure:.1f} Torr** 에서,")
-st.write(f"> RF 전력 **{user_power:.1f} W** 에서 예상 식각 속도({predict(user_power):.2f} Å/분)로 시뮬레이션합니다.")
+st.write(f\"> RF 전력 **{user_power:.1f} W** 에서 예상 식각 속도({predict(user_power):.2f} Å/분)로 시뮬레이션합니다.")
 
 progress_bar = st.progress(0)
 etch_depth_text = st.empty()
@@ -148,9 +148,11 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("#### 🔍 모델 파라미터")
+    # 모든 값이 float이 되도록 NaN으로 패딩
+    intercept_list = [intercept] + [np.nan]*(len(coef)-1)
     params = pd.DataFrame({
         "계수(coef)": coef,
-        "절편(intercept)": [intercept] + [""]*(len(coef)-1)
+        "절편(intercept)": intercept_list
     }, index=[f"RF^{i+1}" for i in range(len(coef))])
     st.dataframe(params.style.format("{:.4e}"))
 
