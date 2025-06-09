@@ -147,11 +147,17 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("#### 🔍 모델 파라미터")
+
+    # intercept를 NaN으로 패딩해 모든 열이 숫자형이 되도록 함
+    intercept_list = [intercept] + [np.nan] * (len(coef) - 1)
+
     params = pd.DataFrame({
         "계수(coef)": coef,
-        "절편(intercept)": [intercept] + [""]*(len(coef)-1)
+        "절편(intercept)": intercept_list
     }, index=[f"RF^{i+1}" for i in range(len(coef))])
-    st.table(params.style.format("{:.4e}"))
+
+    # 숫자 열에만 포맷 적용
+    st.table(params.style.format("{:.4e}", subset=["계수(coef)", "절편(intercept)"]))
 
 with col2:
     st.markdown("#### 📥 예측 결과 다운로드")
@@ -169,3 +175,4 @@ with col2:
 
 st.markdown("---")
 st.caption("© 2025 Semiconductor Etch Simulator")
+
