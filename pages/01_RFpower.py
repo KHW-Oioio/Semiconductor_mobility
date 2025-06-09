@@ -67,7 +67,7 @@ with col3:
 # --- 2. 데이터 & 모델 준비 ---
 st.header("1️⃣ 데이터 확인 및 회귀 모델 학습")
 
-with st.expander("▶️ Raw Data 보기"):
+with st.expander("▶️ Sample Data 보기"):
     st.dataframe(df.style.format({"RF_power":"{:.1f}", "etch_rate":"{:.2f}"}))
 
 X = df[["RF_power"]].values
