@@ -21,7 +21,6 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
 else:
     st.sidebar.info("샘플 데이터를 사용합니다.")
-    # 샘플 데이터 생성 (RF_power: 50~500 W, etch_rate: 10~200 Å/min)
     np.random.seed(42)
     powers = np.linspace(50, 500, 20)
     rates = 0.0008 * powers**2 - 0.3 * powers + 20 + np.random.normal(0, 5, len(powers))
@@ -88,7 +87,6 @@ base = alt.Chart(df).mark_circle(size=60, opacity=0.7).encode(
     y=alt.Y("etch_rate", title="Etch Rate (Å/min)")
 )
 
-# 회귀선 생성
 powers_line = np.linspace(df.RF_power.min(), df.RF_power.max(), 200)
 pred_line = [predict(p) for p in powers_line]
 line = alt.Chart(pd.DataFrame({
@@ -109,24 +107,20 @@ progress_bar = st.progress(0)
 etch_depth_text = st.empty()
 chart_placeholder = st.empty()
 
-# 시뮬레이션 준비
 rate_per_sec = predict(user_power) / 60.0  # Å/sec
 times = np.arange(0, etch_time + 1)
 depths = rate_per_sec * times
 
-# 라인 차트를 그리기 위한 DataFrame
 sim_df = pd.DataFrame({
     "time": times,
     "depth": depths
 })
 
-# 실시간 루프
 for i, t in enumerate(times):
     percent = int((i / etch_time) * 100)
     progress_bar.progress(percent)
     etch_depth_text.markdown(f"**시간:** {t}s → **식각 깊이:** {depths[i]:.1f} Å")
     
-    # 차트 업데이트
     c = alt.Chart(sim_df.iloc[:i+1]).mark_line().encode(
         x=alt.X("time", title="Time (s)"),
         y=alt.Y("depth", title="Etch Depth (Å)")
@@ -141,13 +135,12 @@ st.success("✅ 시뮬레이션 완료!")
 st.header("3️⃣ 시뮬레이션 결과 요약")
 
 total_depth = depths[-1]
-avg_rate = predict(user_power)  # 예측된 평균 식각 속도 Å/분
+avg_rate = predict(user_power)
 
 st.markdown(f"- **총 식각 시간:** {etch_time}초")
 st.markdown(f"- **예상 최종 식각 깊이:** {total_depth:.1f} Å")
 st.markdown(f"- **평균 식각 속도:** {avg_rate:.2f} Å/분")
 
-# 시뮬레이션 데이터 전체를 표로 출력
 st.dataframe(sim_df.style.format({"time": "{:.0f}", "depth": "{:.1f}"}))
 
 # --- 5. 추가 기능 & 다운로드 ---
@@ -161,7 +154,8 @@ with col1:
         "계수(coef)": coef,
         "절편(intercept)": [intercept] + [""]*(len(coef)-1)
     }, index=[f"RF^{i+1}" for i in range(len(coef))])
-    st.table(params.style.format("{:.4e}"))
+    # 여기는 st.table이 아니라 st.dataframe 사용 (스타일 포함 가능)
+    st.dataframe(params.style.format("{:.4e}"))
 
 with col2:
     st.markdown("#### 📥 예측 결과 다운로드")
