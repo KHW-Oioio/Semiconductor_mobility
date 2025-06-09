@@ -16,7 +16,7 @@ st.set_page_config(
 st.sidebar.header("🔧 공정 파라미터 설정")
 
 # 1.1 데이터 업로드
-uploaded_file = st.sidebar.file_uploader("📥 CSV 파일 업로드 ", type=["csv"])
+uploaded_file = st.sidebar.file_uploader("📥 CSV 파일 업로드 (RF_power, etch_rate 컬럼 포함)", type=["csv"])
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 else:
@@ -67,7 +67,7 @@ with col3:
 # --- 2. 데이터 & 모델 준비 ---
 st.header("1️⃣ 데이터 확인 및 회귀 모델 학습")
 
-with st.expander("▶️ Sample Data 보기"):
+with st.expander("▶️ Raw Data 보기"):
     st.dataframe(df.style.format({"RF_power":"{:.1f}", "etch_rate":"{:.2f}"}))
 
 X = df[["RF_power"]].values
@@ -140,6 +140,22 @@ for i, t in enumerate(times.astype(int)):
     time.sleep(0.05)
 
 st.success("✅ 시뮬레이션 완료!")
+
+# --- 3-1. 시뮬레이션 결과 요약 표시 ---
+final_depth = depths[-1]
+avg_etch_rate = final_depth / etch_time if etch_time > 0 else 0
+
+st.markdown("### 📝 시뮬레이션 결과 요약")
+st.info(
+    f"""
+    - **최종 식각 깊이:** {final_depth:.2f} Å  
+    - **평균 식각 속도:** {avg_etch_rate:.2f} Å/초  
+    - **총 시뮬레이션 시간:** {etch_time} 초  
+    - **입력 RF 전력:** {user_power:.1f} W  
+    - **입력 온도:** {temperature:.1f} ℃  
+    - **입력 압력:** {pressure:.1f} Torr  
+    """
+)
 
 # --- 4. 추가 기능 & 다운로드 ---
 st.header("3️⃣ 추가 기능")
