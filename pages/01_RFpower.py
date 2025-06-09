@@ -49,17 +49,17 @@ user_power = st.sidebar.slider(
 # 1.4 시간, 온도, 압력 수평 배치 (최신 Streamlit 필요)
 col1, col2, col3 = st.sidebar.columns(3)
 with col1:
-    etch_time = st.number_input(
+    etch_time = st.slider(
         "⏱ 시뮬레이션 시간 (초)", 
         min_value=10, max_value=600, value=60, step=10
     )
 with col2:
-    temperature = st.number_input(
+    temperature = st.slider(
         "🌡 온도 (℃)", 
         min_value=0.0, max_value=500.0, value=25.0, step=0.1
     )
 with col3:
-    pressure = st.number_input(
+    pressure = st.slider(
         "⚖ 압력 (Torr)", 
         min_value=0.1, max_value=1000.0, value=10.0, step=0.1
     )
